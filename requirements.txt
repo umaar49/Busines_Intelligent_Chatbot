@@ -3,5 +3,5 @@ pandas==2.2.2
 google-generativeai==0.8.5
 sqlalchemy==2.0.44
 plotly==6.5.0
-pymysql==1.4.6
+pymysql==1.1.0
 scipy==1.13.1
