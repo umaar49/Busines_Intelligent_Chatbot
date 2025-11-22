@@ -11,51 +11,51 @@ def get_engine():
         # Get database URL from Streamlit secrets
         if 'AIVEN_DATABASE_URL' not in st.secrets:
             st.error("❌ AIVEN_DATABASE_URL not found in Streamlit secrets")
-            st.info("💡 Please add your Aiven database URL to .streamlit/secrets.toml")
+            st.info("💡 Please add your Aiven database URL to Streamlit secrets")
             return None
-
+            
         connection_string = st.secrets['AIVEN_DATABASE_URL']
-
+        
+        # Ensure SSL is properly configured for Aiven
+        if "ssl-mode=REQUIRED" not in connection_string:
+            connection_string += "?ssl-mode=REQUIRED"
+        
         engine = create_engine(
             connection_string,
             pool_pre_ping=True,
             pool_recycle=1800,
             pool_timeout=30,
-            pool_size=5,  # Smaller for Aiven free tier
-            max_overflow=10,
+            pool_size=3,           # Smaller for Aiven free tier
+            max_overflow=5,
             echo=False
         )
-
-        # Test connection
-        with engine.connect() as conn:
-            conn.execute(text("SELECT 1"))
-
+        
+        # Test connection with simpler approach
+        try:
+            with engine.connect() as conn:
+                conn.execute(text("SELECT 1"))
+            st.success("✅ Connected to Aiven database successfully!")
+        except Exception as e:
+            st.error(f"❌ Database connection test failed: {e}")
+            return None
+            
         return engine
-
-    except SQLAlchemyError as e:
-        st.error(f"❌ Database connection failed: {e}")
+        
+    except Exception as e:
+        st.error(f"❌ Database engine creation failed: {e}")
         return None
 
 
 def create_database():
     """Not needed for Aiven - database is already created"""
-    try:
-        engine = get_engine()
-        if engine is None:
-            return False
-        return True
-    except SQLAlchemyError as e:
-        st.error(f"Database check failed: {e}")
-        return False
+    # Aiven creates the database automatically, just return True
+    return True
 
 
 def store_user_data(df, table_name="sales_data", user_id=None):
     """Store data with chunking to avoid timeouts"""
     if not user_id:
         st.error("❌ User ID is required.")
-        return False
-
-    if not create_database():
         return False
 
     # Get table name from session state
@@ -68,10 +68,11 @@ def store_user_data(df, table_name="sales_data", user_id=None):
     try:
         engine = get_engine()
         if engine is None:
+            st.error("❌ Cannot connect to database")
             return False
 
         # CHUNK DATA TO PREVENT TIMEOUTS (smaller chunks for Aiven)
-        chunk_size = 500  # Smaller for Aiven free tier
+        chunk_size = 200  # Even smaller for Aiven free tier
         total_rows = len(df)
 
         if total_rows > chunk_size:
@@ -100,8 +101,8 @@ def store_user_data(df, table_name="sales_data", user_id=None):
         st.success(f"✅ Data saved in table: `{user_table}`")
         return True
 
-    except SQLAlchemyError as e:
-        st.error(f"Storage error: {e}")
+    except Exception as e:
+        st.error(f"❌ Storage error: {e}")
         return False
 
 
@@ -117,8 +118,8 @@ def execute_sql_query(sql_query):
             df = pd.DataFrame(result.fetchall(), columns=result.keys())
             return df
 
-    except SQLAlchemyError as e:
-        st.error(f"SQL Execution Error: {e}")
+    except Exception as e:
+        st.error(f"❌ SQL Execution Error: {e}")
         return None
 
 
@@ -148,9 +149,9 @@ def delete_user_data(user_id, table_name="sales_data"):
                 return True
             else:
                 st.warning(f"⚠️ No data found for user: {user_id}")
-                return True  # Return True since there's nothing to delete
+                return True
 
-    except SQLAlchemyError as e:
+    except Exception as e:
         st.error(f"❌ Error deleting user data: {e}")
         return False
 
@@ -185,7 +186,7 @@ def delete_all_user_tables(user_id):
                 st.warning(f"⚠️ No tables found for user: {user_id}")
                 return True
 
-    except SQLAlchemyError as e:
+    except Exception as e:
         st.error(f"❌ Error deleting user tables: {e}")
         return False
 
@@ -205,6 +206,6 @@ def get_user_tables(user_id):
 
             return [table[0] for table in result] if result else []
 
-    except SQLAlchemyError as e:
+    except Exception as e:
         st.error(f"Error getting user tables: {e}")
         return []
