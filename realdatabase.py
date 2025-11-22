@@ -77,7 +77,7 @@ def create_database():
 
 
 def store_user_data(df, table_name="sales_data", user_id=None):
-    """Store data with simplified approach"""
+    """Store data with primary key for Aiven compatibility"""
     if not user_id:
         st.error("❌ User ID is required.")
         return False
@@ -95,8 +95,24 @@ def store_user_data(df, table_name="sales_data", user_id=None):
             st.error("❌ Cannot connect to database")
             return False
 
-        # Simple storage without chunks
-        df.to_sql(user_table, engine, if_exists='replace', index=False)
+        # Create a copy of the dataframe and add a primary key column
+        df_with_pk = df.copy()
+        
+        # Add an auto-increment primary key column
+        df_with_pk['id'] = range(1, len(df_with_pk) + 1)
+        
+        # Store data with primary key
+        df_with_pk.to_sql(user_table, engine, if_exists='replace', index=False)
+        
+        # If the table has an 'id' column already, set it as primary key
+        try:
+            with engine.connect() as conn:
+                # Check if we need to alter the table to add primary key
+                conn.execute(text(f"ALTER TABLE {user_table} ADD PRIMARY KEY (id)"))
+        except:
+            # If primary key already exists or can't be set, continue
+            pass
+            
         st.success(f"✅ Data saved in table: `{user_table}`")
         return True
 
