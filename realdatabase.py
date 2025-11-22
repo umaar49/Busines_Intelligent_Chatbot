@@ -11,7 +11,6 @@ def get_engine():
         # Get database URL from Streamlit secrets
         if 'AIVEN_DATABASE_URL' not in st.secrets:
             st.error("❌ AIVEN_DATABASE_URL not found in Streamlit secrets")
-            st.info("💡 Please add your Aiven database URL to Streamlit secrets")
             return None
             
         connection_string = st.secrets['AIVEN_DATABASE_URL']
@@ -20,15 +19,12 @@ def get_engine():
         if connection_string.startswith('mysql://'):
             connection_string = connection_string.replace('mysql://', 'mysql+pymysql://', 1)
         
-        # Remove any ssl-mode parameters and use proper SSL
+        # Remove any ssl-mode parameters
         connection_string = connection_string.replace('?ssl-mode=REQUIRED', '').replace('&ssl-mode=REQUIRED', '')
         
-        # Add SSL parameters for Aiven
         engine = create_engine(
             connection_string,
-            connect_args={
-                "ssl": {"ssl": True}  # Simple SSL enable
-            },
+            connect_args={"ssl": {"ssl": True}},
             pool_pre_ping=True,
             pool_recycle=1800,
             pool_timeout=30,
@@ -38,81 +34,63 @@ def get_engine():
         )
         
         # Test connection
-        try:
-            with engine.connect() as conn:
-                conn.execute(text("SELECT 1"))
-            st.success("✅ Connected to Aiven database successfully!")
-        except Exception as e:
-            st.error(f"❌ Database connection test failed: {e}")
-            # Try without SSL as fallback
-            st.info("🔄 Trying without SSL...")
-            try:
-                engine_no_ssl = create_engine(
-                    connection_string,
-                    pool_pre_ping=True,
-                    pool_recycle=1800,
-                    pool_timeout=30,
-                    pool_size=2,
-                    max_overflow=3,
-                    echo=False
-                )
-                with engine_no_ssl.connect() as conn:
-                    conn.execute(text("SELECT 1"))
-                st.success("✅ Connected to Aiven database without SSL!")
-                return engine_no_ssl
-            except Exception as e2:
-                st.error(f"❌ Connection without SSL also failed: {e2}")
-                return None
-            
+        with engine.connect() as conn:
+            conn.execute(text("SELECT 1"))
+        st.success("✅ Connected to Aiven database successfully!")
         return engine
         
     except Exception as e:
-        st.error(f"❌ Database engine creation failed: {e}")
+        st.error(f"❌ Database connection failed: {e}")
         return None
 
 
 def create_database():
-    """Not needed for Aiven - database is already created"""
+    """Not needed for Aiven"""
     return True
 
 
 def store_user_data(df, table_name="sales_data", user_id=None):
-    """Store data with primary key for Aiven compatibility"""
+    """Store data with PRIMARY KEY - FIXED VERSION"""
     if not user_id:
         st.error("❌ User ID is required.")
         return False
 
     # Get table name
-    if hasattr(st.session_state, 'existing_table') and st.session_state.existing_table:
-        user_table = st.session_state.existing_table
-    else:
-        user_table = f"{user_id}_{table_name}"
-        st.session_state.existing_table = user_table
+    user_table = f"{user_id}_{table_name}"
+    st.session_state.existing_table = user_table
 
     try:
         engine = get_engine()
         if engine is None:
-            st.error("❌ Cannot connect to database")
             return False
 
-        # Create a copy of the dataframe and add a primary key column
-        df_with_pk = df.copy()
-        
-        # Add an auto-increment primary key column
-        df_with_pk['id'] = range(1, len(df_with_pk) + 1)
-        
-        # Store data with primary key
-        df_with_pk.to_sql(user_table, engine, if_exists='replace', index=False)
-        
-        # If the table has an 'id' column already, set it as primary key
-        try:
-            with engine.connect() as conn:
-                # Check if we need to alter the table to add primary key
-                conn.execute(text(f"ALTER TABLE {user_table} ADD PRIMARY KEY (id)"))
-        except:
-            # If primary key already exists or can't be set, continue
-            pass
+        # STEP 1: Create table with PRIMARY KEY first
+        with engine.connect() as conn:
+            # Drop table if exists
+            conn.execute(text(f"DROP TABLE IF EXISTS {user_table}"))
             
+            # Create table with explicit PRIMARY KEY
+            create_sql = f"""
+            CREATE TABLE {user_table} (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                {', '.join([f'`{col}` TEXT' for col in df.columns])}
+            )
+            """
+            conn.execute(text(create_sql))
+            
+        # STEP 2: Insert data using SQL (not to_sql)
+        with engine.connect() as conn:
+            for index, row in df.iterrows():
+                # Convert all values to strings for TEXT columns
+                values = [str(val) if pd.notna(val) else '' for val in row]
+                placeholders = ', '.join(['%s'] * len(values))
+                columns_str = ', '.join([f'`{col}`' for col in df.columns])
+                
+                insert_sql = f"INSERT INTO {user_table} ({columns_str}) VALUES ({placeholders})"
+                conn.execute(text(insert_sql), values)
+            
+            conn.commit()
+        
         st.success(f"✅ Data saved in table: `{user_table}`")
         return True
 
@@ -143,7 +121,6 @@ def delete_user_data(user_id, table_name="sales_data"):
     try:
         engine = get_engine()
         if engine is None:
-            st.error("❌ Database connection failed")
             return False
 
         user_table = f"{user_id}_{table_name}"
@@ -173,7 +150,6 @@ def delete_all_user_tables(user_id):
     try:
         engine = get_engine()
         if engine is None:
-            st.error("❌ Database connection failed")
             return False
 
         with engine.connect() as conn:
@@ -183,14 +159,11 @@ def delete_all_user_tables(user_id):
             ).fetchall()
 
             if result:
-                tables_deleted = 0
                 for table in result:
                     table_name = table[0]
                     conn.execute(text(f"DROP TABLE {table_name}"))
-                    tables_deleted += 1
-
                 conn.commit()
-                st.success(f"✅ Deleted {tables_deleted} tables for user: {user_id}")
+                st.success(f"✅ Deleted tables for user: {user_id}")
                 return True
             else:
                 st.warning(f"⚠️ No tables found for user: {user_id}")
@@ -217,5 +190,4 @@ def get_user_tables(user_id):
             return [table[0] for table in result] if result else []
 
     except Exception as e:
-        st.error(f"Error getting user tables: {e}")
         return []
