@@ -16,35 +16,53 @@ def get_engine():
             
         connection_string = st.secrets['AIVEN_DATABASE_URL']
         
-        # Remove any existing ssl-mode parameter and use proper SSL parameters
-        if "ssl-mode=REQUIRED" in connection_string:
-            connection_string = connection_string.replace("?ssl-mode=REQUIRED", "").replace("&ssl-mode=REQUIRED", "")
+        # Ensure it's using mysql+pymysql:// format
+        if connection_string.startswith('mysql://'):
+            connection_string = connection_string.replace('mysql://', 'mysql+pymysql://', 1)
         
-        # For Aiven, we need to use ssl_ca parameter instead
+        # Remove any ssl-mode parameters and use proper SSL
+        connection_string = connection_string.replace('?ssl-mode=REQUIRED', '').replace('&ssl-mode=REQUIRED', '')
+        
+        # Add SSL parameters for Aiven
         engine = create_engine(
             connection_string,
             connect_args={
-                "ssl": {
-                    "ca": "/etc/ssl/certs/ca-certificates.crt"  # Standard CA certificates path
-                }
+                "ssl": {"ssl": True}  # Simple SSL enable
             },
             pool_pre_ping=True,
             pool_recycle=1800,
             pool_timeout=30,
-            pool_size=3,
-            max_overflow=5,
+            pool_size=2,
+            max_overflow=3,
             echo=False
         )
         
-        # Test connection with simpler approach
+        # Test connection
         try:
             with engine.connect() as conn:
                 conn.execute(text("SELECT 1"))
             st.success("✅ Connected to Aiven database successfully!")
         except Exception as e:
             st.error(f"❌ Database connection test failed: {e}")
-            st.info("💡 Check your Aiven database URL and ensure the service is running")
-            return None
+            # Try without SSL as fallback
+            st.info("🔄 Trying without SSL...")
+            try:
+                engine_no_ssl = create_engine(
+                    connection_string,
+                    pool_pre_ping=True,
+                    pool_recycle=1800,
+                    pool_timeout=30,
+                    pool_size=2,
+                    max_overflow=3,
+                    echo=False
+                )
+                with engine_no_ssl.connect() as conn:
+                    conn.execute(text("SELECT 1"))
+                st.success("✅ Connected to Aiven database without SSL!")
+                return engine_no_ssl
+            except Exception as e2:
+                st.error(f"❌ Connection without SSL also failed: {e2}")
+                return None
             
         return engine
         
@@ -59,12 +77,12 @@ def create_database():
 
 
 def store_user_data(df, table_name="sales_data", user_id=None):
-    """Store data with chunking to avoid timeouts"""
+    """Store data with simplified approach"""
     if not user_id:
         st.error("❌ User ID is required.")
         return False
 
-    # Get table name from session state
+    # Get table name
     if hasattr(st.session_state, 'existing_table') and st.session_state.existing_table:
         user_table = st.session_state.existing_table
     else:
@@ -77,28 +95,10 @@ def store_user_data(df, table_name="sales_data", user_id=None):
             st.error("❌ Cannot connect to database")
             return False
 
-        # Try direct storage without chunks first
-        try:
-            df.to_sql(user_table, engine, if_exists='replace', index=False)
-            st.success(f"✅ Data saved in table: `{user_table}`")
-            return True
-        except Exception as e:
-            st.warning(f"Single storage failed, trying chunks: {e}")
-            
-            # Fallback to chunking
-            chunk_size = 100  # Very small chunks
-            total_rows = len(df)
-            
-            # Create table with first chunk
-            df.head(0).to_sql(user_table, engine, if_exists='replace', index=False)
-            
-            # Insert remaining data in chunks
-            for i in range(0, total_rows, chunk_size):
-                chunk = df.iloc[i:i + chunk_size]
-                chunk.to_sql(user_table, engine, if_exists='append', index=False)
-                
-            st.success(f"✅ Data saved in table: `{user_table}` (used chunks)")
-            return True
+        # Simple storage without chunks
+        df.to_sql(user_table, engine, if_exists='replace', index=False)
+        st.success(f"✅ Data saved in table: `{user_table}`")
+        return True
 
     except Exception as e:
         st.error(f"❌ Storage error: {e}")
