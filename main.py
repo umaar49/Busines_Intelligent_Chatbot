@@ -386,7 +386,7 @@ def display_results_with_auto_chart(results_df, user_question):
 
     x_axis, y_axis = auto_detect_axes(results_df)
 
-   TO CHART SELECTION LOGIC (NEW & IMPROVED)
+   # TO CHART SELECTION LOGIC (NEW & IMPROVED)
   
     time_keywords = [
         "date", "week", "month", "year", "day", "quarter", "time",
