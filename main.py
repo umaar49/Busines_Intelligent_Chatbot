@@ -368,13 +368,12 @@ def display_results_with_auto_chart(results_df, user_question):
 
     st.subheader("📊 Analysis Results")
 
-    # raw data table
+    # ==========================
+    # 📋 DATA TABLE + CSV EXPORT
+    # ==========================
     with st.expander("📋 Tabular Data", expanded=True):
         st.dataframe(results_df, use_container_width=True, height=400)
 
-        # --------------------
-        # CSV Download Button
-        # --------------------
         csv_data = results_df.to_csv(index=False).encode("utf-8")
 
         st.download_button(
@@ -385,15 +384,38 @@ def display_results_with_auto_chart(results_df, user_question):
             key="download_csv_button"
         )
 
-    # Auto axis detection
     x_axis, y_axis = auto_detect_axes(results_df)
 
-    # Chart selection
+   TO CHART SELECTION LOGIC (NEW & IMPROVED)
+  
+    time_keywords = [
+        "date", "week", "month", "year", "day", "quarter", "time",
+        "period", "daily", "monthly", "weekly", "yearly"
+    ]
+
+    trend_keywords = [
+        "trend", "forecast", "increase", "growth", "pattern",
+        "change", "season", "moving average", "progress"
+    ]
+
+    bar_keywords = [
+        "compare", "comparison", "distribution", "rank", "top",
+        "bottom", "breakdown", "split"
+    ]
+    user_q = user_question.lower()
     if y_axis:
-        chart_type = "Line Chart" if ("date" in x_axis.lower() or "week" in x_axis.lower()) else "Bar Chart"
+        if (any(k in x_axis.lower() for k in time_keywords) or
+            any(k in user_q for k in time_keywords) or
+            any(k in user_q for k in trend_keywords)):
+            
+            chart_type = "Line Chart"
+        elif any(k in user_q for k in bar_keywords):
+            chart_type = "Bar Chart"
+        else:
+            chart_type = "Bar Chart"
+
     else:
         chart_type = "Histogram"
-
     create_and_display_chart(results_df, chart_type, x_axis, y_axis)
 
 
