@@ -480,7 +480,7 @@ def show_file_upload_interface():
                 st.metric("Columns", df.shape[1])
 
             # Automatic processing and storage
-            if st.button("🚀 Process & Store Data", type="primary", key="process_store_btn"):
+            if st.button("🚀 Process Data", type="primary", key="process_store_btn"):
                 with st.spinner("Processing and storing data..."):
                     # Apply hybrid preprocessing - Get API key from secrets
                     if 'GEMINI_API_KEY' not in st.secrets:
