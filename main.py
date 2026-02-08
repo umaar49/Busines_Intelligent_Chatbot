@@ -519,9 +519,9 @@ def authenticate_user():
     st.sidebar.markdown("**Or create new account:**")
     col1, col2 = st.sidebar.columns(2)
     with col1:
-        user_name = st.sidebar.text_input("Your Name:", placeholder="John")
+        user_name = st.sidebar.text_input("Your Name:", placeholder="umar")
     with col2:
-        user_email = st.sidebar.text_input("Your Email:", placeholder="john@company.com")
+        user_email = st.sidebar.text_input("Your Email:", placeholder="umar@company.com")
 
     if st.sidebar.button("🚀 Login / Create ID", type="primary", use_container_width=True):
         # Use existing ID
