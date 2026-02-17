@@ -77,7 +77,7 @@ def gemini_auto_preprocessing(df, api_key):
     """Auto preprocessing using Gemini"""
     try:
         genai.configure(api_key=api_key)
-        model = genai.GenerativeModel("models/gemini-2-flash")  # Use available model
+        model = genai.GenerativeModel("models/gemini-2.5-flash-lite")  # Use available model
 
         sample = df.head(20).to_string()
 
