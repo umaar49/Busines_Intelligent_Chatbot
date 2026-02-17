@@ -598,9 +598,7 @@ else:
 if st.session_state.user_authenticated:
     # Direct to chatbot if data exists
     if st.session_state.data_stored and st.session_state.existing_table:
-        st.success("🎉 Welcome back! Your data is ready for analysis.")
-
-        # Show quick stats
+# Show quick stats
         try:
             user_table_name = list(st.session_state.user_tables.values())[0]
             count_query = f"SELECT COUNT(*) as total_records FROM {user_table_name}"
@@ -622,11 +620,6 @@ if st.session_state.user_authenticated:
 # -------------------------
 st.sidebar.markdown("---")
 st.sidebar.subheader("🔧 User Management")
-
-if st.sidebar.button("🔄 Switch User"):
-    for key in defaults.keys():
-        st.session_state[key] = defaults[key]
-    st.rerun()
 
 if st.sidebar.button("🗑️ Delete My Data"):
     if st.session_state.user_id:
