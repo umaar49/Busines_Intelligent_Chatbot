@@ -219,7 +219,7 @@ def text_to_sql_final(user_query, table_name, columns):
             return None
 
         genai.configure(api_key=st.secrets['GEMINI_API_KEY'])
-        model = genai.GenerativeModel('models/gemini-2.0-flash')
+        model = genai.GenerativeModel('models/gemini-2.0')
 
         prompt = f"""
 Convert this question to SQL: {user_query}
