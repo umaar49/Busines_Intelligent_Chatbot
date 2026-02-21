@@ -77,7 +77,7 @@ def gemini_auto_preprocessing(df, api_key):
     """Auto preprocessing using Gemini"""
     try:
         genai.configure(api_key=api_key)
-        model = genai.GenerativeModel("models/gemini-2.5-pro")  # Use available model
+        model = genai.GenerativeModel("models/gemini-2.5-flash")  # Use available model
 
         sample = df.head(20).to_string()
 
@@ -219,7 +219,7 @@ def text_to_sql_final(user_query, table_name, columns):
             return None
 
         genai.configure(api_key=st.secrets['GEMINI_API_KEY'])
-        model = genai.GenerativeModel('models/gemini-2.5-flash')
+        model = genai.GenerativeModel('models/gemini-2-flash')
 
         prompt = f"""
 Convert this question to SQL: {user_query}
