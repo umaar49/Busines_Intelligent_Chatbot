@@ -7,7 +7,6 @@ Turn raw business data into instant answers — no SQL, no manual dashboards, no
 [![MySQL](https://img.shields.io/badge/Database-MySQL-4479A1.svg)](https://www.mysql.com/)
 [![Status](https://img.shields.io/badge/Status-Active%20Development-yellow.svg)]()
 
-🎬 **[Live Demo](#)** &nbsp;·&nbsp; 📹 **[Watch Video Walkthrough](#)**
 
 ---
 
@@ -69,7 +68,7 @@ User Question (Natural Language)
 
 ### Prerequisites
 - Python 3.10+
-- MySQL server (local or hosted)
+- MySQL server (hosted)
 - A Google Cloud project with OAuth credentials configured for Gmail login
 
 ### Installation
@@ -87,36 +86,15 @@ source venv/bin/activate      # On Windows: venv\Scripts\activate
 pip install -r requirements.txt
 ```
 
-### Configuration
-
-Create a `.env` file in the project root:
-
-```env
-DB_HOST=localhost
-DB_USER=your_mysql_user
-DB_PASSWORD=your_mysql_password
-DB_NAME=your_database_name
-GOOGLE_CLIENT_ID=your_oauth_client_id
-GOOGLE_CLIENT_SECRET=your_oauth_client_secret
-```
-
-### Run the app
-
-```bash
-streamlit run app.py
-```
-
-The app will open at `http://localhost:8501`.
-
----
 
 ## 💡 Usage
 
 1. Sign in with your Gmail account.
-2. Connect or select your business database.
-3. Type a question in plain English — e.g. *"What were total sales last quarter?"* or *"Which product category performed best this month?"*
-4. Get an instant table and chart. No SQL, no manual chart-building.
-5. Manage or delete your account data at any time from your profile.
+2. Upload your business data.
+3. Preprocess the data and store in Mysql database online.
+4. Type a question in plain English — e.g. *"What were total sales last quarter?"* or *"Which product category performed best this month?"*
+5. Get an instant table and chart. No SQL, no manual chart-building.
+6. Manage or delete your account data at any time from your profile.
 
 ---
 
